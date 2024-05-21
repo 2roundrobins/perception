@@ -1,5 +1,5 @@
 # perception
- norns time shifting script based on animal CFF (critical flicker fusion) and their perception of the world
+ norns time shifting script based on animal CFF (critical-flicker fusion frequency) and their perception of the world
 
  ![main_gui](/assets/gui.png)
 
@@ -71,7 +71,7 @@ perception script can be used both as a _instrument looper_ and _sample player_.
 * [...] means softcut is playing
 * [REC] means softcut is recording
 
-currently the loop is set to 6 seconds, however you can change that by visiting the [PARAMS](#perception-params)
+currently the loop is set to 6 seconds, however you can change that by visiting the [PARAMS](#perception-PARAMS)
 
 **clear** the recording by holding K1 and pressing K3
 
