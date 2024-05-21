@@ -1,28 +1,38 @@
---- percpetion v0.1 @fellowfinch
+--- percpetion v0.5 @fellowfinch
 --- llllllll.co/t/url
---- 
----
----
 ---
 --- ▼▼▼ instructions below ▼▼▼
 ---
---- load sample via PARAMS
---- E1 change the animal 
+--- "There is no fundamental 
+--- difference between man and 
+--- animalsin their ability to
+--- feel pleasure and pain,
+--- happiness, and misery." 
+-- - Charles Darwin
+---
+--- record or load samples and
+--- experience them through
+--- the world of animals
+---
+--- E1 change the species 
 --- E2 volume
 --- E3 fine tune
---- K1 toggle recording
+--- K1 shift
 --- K2 start/stop
---- K3 reverse
+--- K3 flip
+--- K1 + K2 record
+--- K1 + K2 clear buffer
 
 
--- TO DO
--- ISSUE: need to find a good way to show detuning in the cff value
 
+-- TO DO: record loop greater than what it is shown
+-- TO DO: make the CFF value change with moving the rate in params
+-- TO DO: flip should stay on when we from one animal to the other unless bat physics
+-- TO DO: hearing range dry wet, should jump from one to the other when yes or no
 
 -- vars
-local current_animal = 8
+current_animal = 8
 MAX_BUFFER = 350
--- sample variables
 sample_voice = 4
 rec_voice = 1
 sample_level = 0.5
@@ -33,11 +43,20 @@ rec = 0
 play = 1
 pre = 0.8
 k1_pressed = false
+k3_pressed = false
+f_engage = false
+pre_level = 0.3
+loop_end = 6
+loop_start = 0.1
+last_pre_level = 1
+
+---metros
 shape_shifter_metro = metro.init()
+panning_shifter_metro = metro.init()
+rate_shifter_metro = metro.init()
 
 -- init
 function init()
-    softcut.buffer_clear()
     audio.level_adc_cut(1)
     audio.level_tape_cut(0)
     softcut.buffer_clear()
@@ -54,74 +73,97 @@ function init()
     softcut.rate_slew_time(sample_voice, 4)
     softcut.play(sample_voice, 1)
     softcut.rec(sample_voice, 0)
-
-    softcut.fade_time(sample_voice, 0)
+    softcut.fade_time(sample_voice, 0.5)
     
     --rec buffer
     softcut.enable(rec_voice,1)
     softcut.buffer(rec_voice,1)
     softcut.level_input_cut(1,rec_voice,1.0)
     softcut.level_input_cut(2,rec_voice,1.0)
-
     softcut.level(rec_voice,1.0)
     softcut.rate(rec_voice,1.0)
     softcut.position(rec_voice,1)
-
     softcut.loop(rec_voice,1)
-    softcut.loop_start(rec_voice,1)
-    softcut.loop_end(rec_voice, 5)
+    softcut.loop_start(rec_voice,loop_start)
+    softcut.loop_end(rec_voice, loop_end)
     softcut.fade_time(rec_voice, 0.5)
-
-    softcut.rate_slew_time(rec_voice, 4)
-    softcut.post_filter_rq(rec_voice, 10)
-
+    softcut.rate_slew_time(rec_voice, 5)
     softcut.play(rec_voice, 1)
     softcut.rec(rec_voice, 1)
     softcut.rec_level(rec_voice,0)
-    softcut.pre_level(rec_voice,1) 
-
+    softcut.pre_level(rec_voice, pre_level) 
     setRate(animal_tab[current_animal].cff)
-    setFreq()
     stop_shape_shifter()
     
     
-  -- sample parameters
+--params
   params:add_separator("rec_params", "Recording")
   
   params:add_control("rec_level", "intensity", controlspec.new(0, 1, 'lin', 0, 0.7), function(param) return (round_form(util.linlin(0, 1, 0, 100, param:get()), 1, "%")) end)
   params:set_action("rec_level", function(val) rec_level = val softcut.level(rec_voice, val) end)
   
-  params:add_separator("sample_params", "Sample")
-  params:add_file("load_sample", "> select sample", "")
-  params:set_action("load_sample", function(path) load_audio(path) end)
+  params:add_control("pre_level", "feedback", controlspec.new(0, 1, 'lin', 0, pre_level), function(param) return (round_form(util.linlin(0, 1, 0, 100, param:get()), 1, "%")) end)
+  params:set_action("pre_level", function(val) pre_level = val softcut.pre_level(rec_voice, val) end)
   
-  
-  params:add_control("sample_level", "intensity", controlspec.new(0, 1, 'lin', 0, 0.7), function(param) return (round_form(util.linlin(0, 1, 0, 100, param:get()), 1, "%")) end)
-  params:set_action("sample_level", function(val) sample_level = val softcut.level(sample_voice, val) end)
-  
-   params:add_option("plant_sample", "load?", {"no", "yes"}, 2)
-  params:set_action("plant_sample", function(val) sample_is_planted = val == 2 and true or false toggle_sample() end)
+  params:add_control("loop_start", "loop start", controlspec.new(0, 20, 'lin', 0.001, 0, "s"))
+  params:set_action("loop_start", function(val) softcut.loop_start(1, val) end)
+
+  params:add_control("loop_end", "loop end", controlspec.new(0, 20, 'lin', 0.001, 6, "s"))
+  params:set_action("loop_end", function(val) softcut.loop_end(1, val) local loop_start_max = val - 0.001
+  params:set("loop_start", util.clamp(params:get("loop_start"), 0, loop_start_max)) end)
+
+  params:add_control("rate_slew_time", "slew", controlspec.new(0, 10, 'lin', 0.1, 5, "s"))
+  params:set_action("rate_slew_time", function(val) softcut.rate_slew_time(1, val) end)
   
   
   params:add_separator("freq_params", "Hearing Range")
   params:add_option("freq_view", "implement?", {"No", "Yes"}, 1)
   params:set_action("freq_view", updateFreqView)
   
-  
+  params:add_control("post_filter_dry", "dry", controlspec.new(0, 1, 'lin', 0.01, 1))
+  params:set_action("post_filter_dry", function(val) softcut.post_filter_dry(sample_voice, val) softcut.post_filter_dry(rec_voice, val) end)
+
+  params:add_control("post_filter_wet", "wet", controlspec.new(0, 1, 'lin', 0.01, 1))
+  params:set_action("post_filter_wet", function(val) softcut.post_filter_bp(sample_voice, val) softcut.post_filter_bp(rec_voice, val) end)
   
   params:add_separator("fine_tune", "Fine Tune")
-  params:add_number("detune_semitones", "Semitones", -12, 12, 0, function(param) return round_form(param:get(), 1, "st") end)
-  params:set_action("detune_semitones", function(semi) detune = semi / 12 update_rate() end)
-  params:add_number("detune", "Cents", -600, 600, 0, function(param) return (round_form(param:get(), 1, "cents")) end)
-  params:set_action("detune", function(cent) detune = cent / 1200 update_rate() end)
-  params:add{type = "text", id = "cff_display", name = "Current CFF: " .. animal_tab[current_animal].cff, action = function() end}
   
-  params:add_separator("shape_shifter", "Shape Shifter")
-  params:add_option("shape_shifter", "Shape Shifter", {"off", "on"}, 1)
+  params:add_number("detune_semitones", "semitones", -12, 12, 0, function(param) return round_form(param:get(), 1, "st") end)
+  params:set_action("detune_semitones", function(semi) detune = semi / 12 update_rate() end)
+  params:add_number("detune", "cents", -600, 600, 0, function(param) return (round_form(param:get(), 1, "cents")) end)
+  params:set_action("detune", function(cent) detune = cent / 1200 update_rate() end)
+  params:add{type = "text", id = "cff_display", name = "current CFF: " .. animal_tab[current_animal].cff, action = function() end}
+  
+  params:add_separator("chaos_playground", "Chaos Playground")
+  
+  params:add_option("shape_shifter", "Skin Walker", {"repel", "summon"}, 1)
   params:set_action("shape_shifter", function(value) if value == 2 then start_shape_shifter() else stop_shape_shifter() end end)
-  params:add_control("shape_shifter_interval", "Shape Shifter Interval", controlspec.new(1, 60, "lin", 1, 5, "s")) 
+  params:add_control("shape_shifter_interval", "shapeshifts every...", controlspec.new(1, 60, "lin", 1, 6, "s")) 
   params:set_action("shape_shifter_interval", function(value) shape_shifter_metro.time = value if params:get("shape_shifter") == 2 then start_shape_shifter() end end)
   
+  params:add_option("panning_shifter", "Bat Physics", {"off", "on"}, 1)
+  params:set_action("panning_shifter", function(value) if value == 2 then start_panning_shifter() else stop_panning_shifter() end end)
+  params:add_control("panning_shifter_interval", "swoops every...", controlspec.new(1, 60, "lin", 1, 1, "s"))
+  params:set_action("panning_shifter_interval", function(value) panning_shifter_metro.time = value if params:get("panning_shifter") == 2 then start_panning_shifter() end end)
+  
+  params:add_option("rate_shifter", "Time Machine", {"off", "on"}, 1)
+  params:set_action("rate_shifter", function(value) if value == 2 then start_rate_shifter() else stop_rate_shifter() end end)
+  params:add_control("rate_shifter_interval", "travels every...", controlspec.new(1, 60, "lin", 1, 6, "s"))
+  params:set_action("rate_shifter_interval", function(value) rate_shifter_metro.time = value if params:get("rate_shifter") == 2 then start_rate_shifter() end end)
+  
+  params:add_separator("sample_params", "Sample")
+  
+  params:add_file("load_sample", "> select sample", "")
+  params:set_action("load_sample", function(path) load_audio(path) end)
+  
+  params:add_control("sample_level", "intensity", controlspec.new(0, 1, 'lin', 0, 0.7), function(param) return (round_form(util.linlin(0, 1, 0, 100, param:get()), 1, "%")) end)
+  params:set_action("sample_level", function(val) sample_level = val softcut.level(sample_voice, val) end)
+  
+  params:add_control("rate_slew_time", "slew", controlspec.new(0, 10, 'lin', 0.1, 5, "s"))
+  params:set_action("rate_slew_time", function(val) softcut.rate_slew_time(sample_voice, val) end)
+  
+  params:add_option("plant_sample", "load?", {"no", "yes"}, 2)
+  params:set_action("plant_sample", function(val) sample_is_planted = val == 2 and true or false toggle_sample() end)
   
   params:bang()
 
@@ -130,6 +172,7 @@ end
 
 
 -- animal table
+-- to be updated once in a while...if ya wanna help, send me a DM on discord @fellowfinch
 animal_tab = {
     {name = "Cane Toad", species = "Rhinella marina", order = "Anura", class = "Amphibia", phylum = "Chordata", lifespan = 12.5, cff = 6.7, lp = 3000, hp = 20, bp = 245, q = 10},
     {name = "Green Frog", species = "Rana clamitans", order = "Anura", class = "Amphibia", phylum = "Chordata", lifespan = 3, cff = 21, lp = 20000, hp = 20, bp = 10010, q = 0.1},
@@ -148,6 +191,7 @@ animal_tab = {
     {name = "Honey Bee", species = "Apis mellifera", order = "Hymenoptera", class = "Insecta", phylum = "Arthropoda", lifespan = 0.1, cff = 200, lp = 500, hp = 100, bp = 250, q = 8}
 }
 
+-- sciency stuff here
 --cff rate
 function setRate(cff)
     cffrate = 60 / cff
@@ -162,16 +206,13 @@ function update_rate()
   local n = math.pow(2, detune)
   local cff = animal_tab[current_animal].cff
   local new_rate = setRate(cff) * n
-  
-
   softcut.rate(sample_voice, new_rate)
   softcut.rate(rec_voice, new_rate)
-  
   print("Rate with Detune:", new_rate)
   redraw()
 end
 
-
+-- hearing range
 function setFreq()
     local bp = animal_tab[current_animal].bp
     local q = animal_tab[current_animal].q
@@ -179,8 +220,6 @@ function setFreq()
     softcut.post_filter_bp(sample_voice, 1)
     softcut.post_filter_rq (sample_voice, 1 / q)
     softcut.post_filter_fc(sample_voice, bp)
-
-    
     softcut.post_filter_dry(rec_voice, 0)
     softcut.post_filter_bp(rec_voice, 1)
     softcut.post_filter_rq (rec_voice, 1 / q)
@@ -191,24 +230,25 @@ function updateFreqView()
     local view_state = params:get("freq_view")
     if view_state == 2 then
         setFreq()
+        f_engage = true
     else
         softcut.post_filter_dry(sample_voice, 1)
         softcut.post_filter_dry(rec_voice, 1)
+        f_engage = false
     end
 end
 
---shapeshifter function
+--skinwalker
 function shapeShifter()
-    if params:get("shape_shifter") == 2 then  -- Check if the shapeShifter is enabled
+    if params:get("shape_shifter") == 2 then
         current_animal = math.random(1, #animal_tab)
         setRate(animal_tab[current_animal].cff)
         if params:get("freq_view") == 2 then
             setFreq(animal_tab[current_animal].bp)
         end
-        redraw()  -- Update the screen to show the new animal
+        redraw()
     end
 end
-
 
 function start_shape_shifter()
     shape_shifter_metro.event = shapeShifter
@@ -220,6 +260,37 @@ function stop_shape_shifter()
     shape_shifter_metro:stop()
 end
 
+-- bat shit
+function start_panning_shifter()
+  panning_shifter_metro.time = params:get("panning_shifter_interval")
+  panning_shifter_metro.event = function()
+    local pan = math.random() * 2 - 1
+    softcut.pan(rec_voice, pan)
+    softcut.pan(sample_voice, pan)
+  end
+  panning_shifter_metro:start()
+end
+
+function stop_panning_shifter()
+  panning_shifter_metro:stop()
+end
+
+--time machine
+function start_rate_shifter()
+  rate_shifter_metro.time = params:get("rate_shifter_interval")
+  rate_shifter_metro.event = function()
+    if sample_is_planted then
+      setRate(-animal_tab[current_animal].cff)
+    else
+      setRate(animal_tab[current_animal].cff)
+    end
+  end
+  rate_shifter_metro:start()
+end
+
+function stop_rate_shifter()
+  rate_shifter_metro:stop()
+end
 
   
 -- load sample file
@@ -252,16 +323,27 @@ function toggle_sample()
 end
 
 --UI--
-
-
 function key(n, z)
   if n == 1 then
     k1_pressed = (z == 1)
-  elseif n == 2 and z == 1 then
+  elseif n == 3 then
+    k3_pressed = (z == 1)
+    if k1_pressed and k3_pressed then
+      softcut.buffer_clear(1)
+    elseif z == 1 then
+      sample_is_planted = not sample_is_planted
+      if sample_is_planted then
+        setRate(animal_tab[current_animal].cff)
+      else
+        setRate(-animal_tab[current_animal].cff)
+      end
+    end
+   elseif n == 2 and z == 1 then
     if k1_pressed then
       rec = rec == 0 and 1 or 0
-      print("Recording external audio:", rec == 1)
       softcut.rec_level(1, rec)
+      params:set("pre_level", rec == 1 and 0.3 or last_pre_level) -- issue defining pre_level from global and params -- to stupdi for logic @sacha pls help
+      softcut.pre_level(1, params:get("pre_level"))
     else
       play = play == 0 and 1 or 0
       sample_is_planted = play == 1
@@ -269,24 +351,16 @@ function key(n, z)
         setRate(animal_tab[current_animal].cff)
         print("stop/start")
       else
-        -- Stop playback
+        -- store the current pre_level value when recording stops...yeah I dunno
+        last_pre_level = params:get("pre_level")
+        -- set pre_level to default value (1) when not recording
+        softcut.pre_level(1, 1)
         softcut.rate(sample_voice, 0)
         softcut.rate(rec_voice, 0)
       end
-      print("Playback", play == 1 and "started" or "stopped")
     end
-  elseif n == 3 and z == 1 then
-     if k1_pressed then
-       softcut.buffer_clear(1)
-       else
-      sample_is_planted = not sample_is_planted
-        if sample_is_planted then
-          setRate(animal_tab[current_animal].cff)
-        else
-        setRate(-animal_tab[current_animal].cff) -- why this? you're neither stopping or reversing playback. just asking///...its reversing!
-        end
-      end
   end
+  redraw()
 end
 
 
@@ -311,6 +385,19 @@ end
 --SCREEN
 function redraw()
   screen.clear()
+
+  -- symbols
+  if rec == 1 then
+    screen.move(45, 62)
+    screen.level(15)
+    screen.text("[REC]")
+  elseif play == 1 then
+    screen.move(45, 62)
+    screen.level(4)
+    screen.text("[...]")
+  end
+
+  -- main
   screen.level(15)
   screen.font_size(15)
   screen.font_face(49)
@@ -327,14 +414,23 @@ function redraw()
   screen.text("Order: " .. animal_tab[current_animal].order)
   screen.move(5, 44)
   screen.text("CFF: " .. animal_tab[current_animal].cff)
+
+  -- f_check
+  screen.move(5, 53)
   screen.font_size(8)
   screen.font_face(1)
-  screen.move(5,53)
+  if f_engage == true then
+    screen.level(15)
+  else
+    screen.level(5)
+  end
   screen.text("HR: " .. animal_tab[current_animal].hp.. "-" .. animal_tab[current_animal].lp.."hz")
-  screen.move(5,62)
+
+  -- vol
+  screen.move(5, 62)
+  screen.level(5)
   screen.text("Vol: " .. params:string("sample_level"))
-  
-  
+
   --pngs
     if animal_tab[current_animal].name == "Human" then
       screen.display_png(_path.code .. "/perception/assets/human.png", 55, 0)
@@ -378,7 +474,6 @@ end
 function round_form(param, quant, form)
   return(util.round(param, quant)..form)
 end
-
 
 function screen_redraw()
   if dirtyscreen then
