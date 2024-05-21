@@ -21,7 +21,7 @@ or
 in maiden type:
 
 ```
-;install https://github.com/2roundrobins/messiaen
+;install https://github.com/2roundrobins/perception
 ```
 ## ANIMAL CFF
 there are quite a few studies suggesting quite noticable correlation between **CFF** (_critical-flicker fusion frequency_) and the perception of time and temporal resolution  within the animal kingdom, including humans. although CFF is mostly linked to a visual threshold, where animals ceases to perceive flickering of a light source and sees a continous stream of light (Inger, 2014), the differenct perception of time has been assesed over different sensory modalities, including auditory (Fink, 2006).
@@ -31,23 +31,23 @@ thus, my goal was to create a sample player & looper, which takes not only CFF d
 ### featured animal species
 the script features the following animal species;
 
-| animal species | scientific name  
-| ------------ | ---------------- 
-| Cane Toad | _Bufo marinus_ 
-| Green Frog | _Rana clamitans_ 
-| Rainbow Trout | _Oncorhynchus mykiss_
-| Harp Seal | _Pagophilus groenlandicus_
-|Brown Rat| _Rattus norvegicus_ 
-| Great-Horned Owl| _Bubo virginianus_
-|Cat |  _Felis catus_
-| Human | _Homo sapiens_ 
-| Chinese Tussah Moth | _Antheraea pernyi_ 
-| Dog | _Canis lupus familiaris_
-| Common Treeshrew | _Tupaia glis_
-|Common Starling| _Sturnus vulgaris_ 
-| Golden-Mantled Ground Squirrel| _Spermophilus lateralis_
-| Tsetse Fly | _Glossina morsitans_
-| Honey Bee | _Apis mellifera_
+| species | scientific name | CFF |
+| ------------ | ---------------- |----- |
+| Cane Toad | _Bufo marinus_   |6.7 |
+| Green Frog | _Rana clamitans_ |21 |
+| Rainbow Trout | _Oncorhynchus mykiss_ |27 |
+| Harp Seal | _Pagophilus groenlandicus_ |32.7 |
+|Brown Rat| _Rattus norvegicus_ |39 |
+| Great-Horned Owl| _Bubo virginianus_ |45 |
+|Cat |  _Felis catus_ |55 |
+| Human | _Homo sapiens_ |60 |
+| Chinese Tussah Moth | _Antheraea pernyi_ |70 |
+| Dog | _Canis lupus familiaris_ |80 |
+| Common Treeshrew | _Tupaia glis_ |90 |
+|Common Starling| _Sturnus vulgaris_ |100 |
+| Golden-Mantled Ground Squirrel| _Spermophilus lateralis_ |120 |
+| Tsetse Fly | _Glossina morsitans_ |145 |
+| Honey Bee | _Apis mellifera_ |200 |
 
 the CFF values for these particular animals were taken from a Google Sheet prepared by Jason Schukraft from the article [_Does Critical-Flicker Fusion Frequency Track The Subjective Experience of Time_](https://static1.squarespace.com/static/6035868111c9bd46c176042b/t/60c377be55c0e507bec8934b/1623422910703/Critical%2BFlicker-Fusion%2BReport%2B__%2BRethink%2BPriorities.pdf), which the values were taken from the academic journal [_Potential Biological and Ecological Effects of Flickering Artificial Light_](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0098631) by Richard Inger.
 
