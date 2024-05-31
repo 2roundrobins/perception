@@ -99,11 +99,11 @@ in order to fully immerse into the perception of animals, you can also activate 
 ### chaos playground
 you can also automate certain elements of the script by entering the chaos playground
 
-`skin walker` shapeshift through different animals by summoning a skinwalker, by repeling it you will stay on the selected species
+`Yee Naaldlooshii` shapeshift through different animals by summoning a skinwalker, by repeling it you will stay on the selected species
 
-`bat physics` activate random panning
+`Bats!` activate random panning
 
-`time machine` activate moving forwards and backwards in time
+`Time Machine` activate moving forwards and backwards in time
 
 all of these have their own intervals, which you can use to make some wacky results
 
